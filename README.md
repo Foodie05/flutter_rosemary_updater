@@ -105,8 +105,45 @@ The `ScriptRunner` supports a variety of commands for resource manipulation duri
 
 ---
 
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Android Configuration
+
+To enable automatic APK installation on Android, you must add the following permission to your `android/app/src/main/AndroidManifest.xml`:
+
+```xml
+<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+```
+
+If you are targeting Android 10 (API level 29) or higher, you may also need to add `android:requestLegacyExternalStorage="true"` to your `<application>` tag if you intend to use external storage, although this library defaults to using application-specific directories or temporary directories which are safer.
+
+## iOS Configuration
+
+For iOS, this library currently supports resource updates. App updates typically require redirecting the user to the App Store.
+
 <a name="chinese"></a>
 ## 中文
+
+### 📜 许可证
+
+本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件。
+
+### Android 配置
+
+为了启用 Android 端的自动 APK 安装功能，您必须在 `android/app/src/main/AndroidManifest.xml` 中添加以下权限：
+
+```xml
+<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+```
+
+如果您使用外部存储，在 Android 10 (API 29) 及以上版本可能需要添加 `android:requestLegacyExternalStorage="true"`。不过，本库默认使用应用私有目录或临时目录，通常无需额外存储权限即可工作。
+
+### iOS 配置
+
+iOS 端目前支持资源更新。应用更新通常需要跳转到 App Store，本库会自动处理 App Store 链接跳转（需自行实现跳转逻辑或使用 `url_launcher`）。
 
 ### 🚀 简介
 

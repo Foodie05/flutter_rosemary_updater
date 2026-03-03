@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+import 'package:open_file_plus/open_file_plus.dart';
 import 'model/update_request.dart';
 import 'model/update_receive.dart';
 import 'script_runner.dart';
@@ -114,14 +115,90 @@ class RosemaryUpdater {
       await _runResUpdate(updateInfo, onStatusChanged);
     }
     
-    // App update usually requires user interaction to install APK or open store
-    // We can provide a method to download it, but installation is platform specific.
-    // For now, we focus on resource update which is fully scriptable.
     if (updateInfo.appUpgrade) {
-       onStatusChanged(UpdateStatus(
-         success: true, 
-         message: 'App update available: ${updateInfo.appUpgradeDescription}. URL: ${updateInfo.appUpgradeUrl}'
-       ));
+      await _runAppUpdate(updateInfo, onStatusChanged);
+    }
+  }
+
+  Future<void> _runAppUpdate(
+    UpdateReceive updateInfo,
+    void Function(UpdateStatus status) onStatusChanged,
+  ) async {
+    if (updateInfo.appUpgradeUrl.isEmpty) {
+      onStatusChanged(UpdateStatus(
+        error: 'App update URL is empty',
+        success: false,
+      ));
+      return;
+    }
+
+    try {
+      onStatusChanged(UpdateStatus(
+        downloading: true,
+        message: 'Downloading app update...',
+        progress: 0,
+      ));
+
+      String downloadPath;
+      if (config.downloadDir != null) {
+        downloadPath = config.downloadDir!;
+      } else {
+        // Use external storage directory for Android if possible to avoid strict file permission issues
+        // or temporary directory
+        if (Platform.isAndroid) {
+          final extDir = await getExternalStorageDirectory();
+          downloadPath = extDir?.path ?? (await getTemporaryDirectory()).path;
+        } else {
+          final tempDir = await getTemporaryDirectory();
+          downloadPath = tempDir.path;
+        }
+      }
+
+      final fileName = 'update_${DateTime.now().millisecondsSinceEpoch}.apk';
+      final filePath = path.join(downloadPath, fileName);
+
+      // Download APK
+      await _dio.download(
+        updateInfo.appUpgradeUrl,
+        filePath,
+        onReceiveProgress: (received, total) {
+          if (total != -1) {
+            int progress = (received / total * 100).toInt();
+            onStatusChanged(UpdateStatus(
+              downloading: true,
+              progress: progress,
+              message: 'Downloading app update...',
+            ));
+          }
+        },
+      );
+
+      onStatusChanged(UpdateStatus(
+        installing: true,
+        message: 'Installing app update...',
+        progress: 100,
+      ));
+
+      // Install APK
+      final result = await OpenFile.open(filePath);
+      
+      if (result.type == ResultType.done) {
+        onStatusChanged(UpdateStatus(
+          success: true,
+          message: 'App update installation started',
+        ));
+      } else {
+         onStatusChanged(UpdateStatus(
+          error: 'Failed to open APK: ${result.message}',
+          success: false,
+        ));
+      }
+
+    } catch (e) {
+      onStatusChanged(UpdateStatus(
+        error: 'App update failed: $e',
+        success: false,
+      ));
     }
   }
 
