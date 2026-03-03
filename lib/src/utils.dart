@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:crypto/crypto.dart';
@@ -14,7 +15,9 @@ enum UpdaterPlatformType {
 
 void debugPrintLog(String str) {
   // Can be overridden or hooked
-  print(str);
+  if (kDebugMode) {
+    debugPrint(str);
+  }
 }
 
 String generateMd5(String input) {

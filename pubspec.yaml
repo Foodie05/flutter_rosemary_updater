@@ -1,11 +1,13 @@
 name: rosemary_updater
-description: "A new Flutter package project."
+description: A powerful Flutter package for managing application and resource updates, fully compatible with the Rosemary backend management system.
 version: 0.0.1
-homepage:
+homepage: https://cruty.cn
+repository: https://github.com/Foodie05/flutter_rosemary_updater
+issue_tracker: https://github.com/Foodie05/flutter_rosemary_updater/issues
 
 environment:
-  sdk: ^3.11.0
-  flutter: ">=1.17.0"
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.10.0"
 
 dependencies:
   archive: ^3.3.1

@@ -1,3 +1,5 @@
+// ignore_for_file: non_constant_identifier_names
+
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:path/path.dart' as path;
