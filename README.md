@@ -1,4 +1,7 @@
-# Rosemary Updater
+# rosemary_updater
+
+
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 [English](#english) | [中文](#chinese)
 
@@ -21,8 +24,7 @@ Add this package to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  rosemary_updater:
-    path: ./rosemary_updater # Or your git/pub dependency
+  rosemary_updater: ^0.0.2
 ```
 
 ### 🛠 Usage
@@ -103,6 +105,21 @@ The `ScriptRunner` supports a variety of commands for resource manipulation duri
 - Logic: `if`, `compare_num`, `is_arg_equal`
 - Utils: `dl` (download), `say` (log)
 
+### 🔧 Platform Notes
+
+- Android
+  - Automatically downloads APK and invokes system installer.
+  - Ensure `android/app/src/main/AndroidManifest.xml` includes:
+    ```xml
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    ```
+- iOS
+  - Supports resource updates. App updates generally require App Store flow.
+
+### ▶️ Example
+
+See a minimal runnable example in [example/lib/main.dart](example/lib/main.dart).
+
 ---
 
 
@@ -163,8 +180,7 @@ Rosemary Updater 是一个强大的 Flutter 库，专为管理应用和资源更
 
 ```yaml
 dependencies:
-  rosemary_updater:
-    path: ./rosemary_updater # 或者使用 git/pub 依赖
+  rosemary_updater: ^0.0.2
 ```
 
 ### 🛠 使用方法
@@ -244,5 +260,18 @@ if (updateInfo != null && (updateInfo.appUpgrade || updateInfo.resUpgrade)) {
 
 - 文件操作: `mv` (移动), `cp` (复制), `rm` (删除), `mkdir` (创建目录), `touch` (创建文件), `unzip` (解压)
 - 逻辑控制: `if`, `compare_num` (比较数字), `is_arg_equal` (参数相等判断)
-- 工具: `dl` (下载), `say` (日志输出)
 
+### 🔧 平台说明
+
+- Android
+  - 自动下载 APK 并调用系统安装器。
+  - 请在 `android/app/src/main/AndroidManifest.xml` 中添加：
+    ```xml
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    ```
+- iOS
+  - 支持资源更新；应用更新一般需要跳转 App Store。
+
+### ▶️ 示例
+
+在 [example/lib/main.dart](example/lib/main.dart) 查看可运行的最小示例。

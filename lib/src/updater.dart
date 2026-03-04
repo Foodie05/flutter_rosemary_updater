@@ -91,7 +91,7 @@ class RosemaryUpdater {
       // final response = await http.post(Uri.parse('${GlobalValue.apiBaseUrl}/api/update_check'), ...
       
       final response = await _dio.post(
-        '${config.apiBaseUrl}/api/update_check',
+        '${config.apiBaseUrl}/update',
         data: requestData.toJson(),
       );
 
