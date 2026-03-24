@@ -13,6 +13,7 @@ UpdateRequest _$UpdateRequestFromJson(Map<String, dynamic> json) =>
       appVersion: (json['appVersion'] as num).toInt(),
       betaPasswd: json['betaPasswd'] as String,
       resVersion: (json['resVersion'] as num).toInt(),
+      platform: json['platform'] as String,
     );
 
 Map<String, dynamic> _$UpdateRequestToJson(UpdateRequest instance) =>
@@ -22,4 +23,5 @@ Map<String, dynamic> _$UpdateRequestToJson(UpdateRequest instance) =>
       'appVersion': instance.appVersion,
       'betaPasswd': instance.betaPasswd,
       'resVersion': instance.resVersion,
+      'platform': instance.platform,
     };

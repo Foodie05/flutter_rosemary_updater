@@ -1,3 +1,12 @@
+## 0.1.0
+
+* Add platform-aware app update checks for Android, macOS, Windows, and iOS/iPadOS.
+* Add installer channel metadata from Rosemary backend, including APK, DMG, EXE, MSI, App Store, and TestFlight flows.
+* Add store-link launching for iOS/iPadOS updates and external update channels.
+* Improve desktop installer handling for macOS and Windows packages.
+* Update generated request/response models for the new cross-platform update payload.
+* Add `url_launcher` dependency for external update flows.
+
 ## 0.0.2
 
 * Fix: update check endpoint changed to `/update`.

@@ -5,7 +5,7 @@
 
 [English](#english) | [中文](#chinese)
 
-A powerful Flutter package for managing application and resource updates, fully compatible with the [Rosemary](https://github.com/Rosemary-Project) backend management system. This library extracts the core update logic from the Zion project, providing a robust solution for checking updates, downloading resources, and applying patches via a custom script interpreter.
+A Flutter package for managing application and resource updates, fully compatible with the [Rosemary](https://github.com/Rosemary-Project) backend management system. It supports platform-aware app update checks, desktop installer handoff, store-link redirects, and resource patch execution through the built-in script interpreter.
 
 <a name="english"></a>
 ## English
@@ -13,7 +13,8 @@ A powerful Flutter package for managing application and resource updates, fully 
 ### 🚀 Features
 
 - **Rosemary Backend Compatibility**: Seamlessly integrates with Rosemary for version management and update distribution.
-- **Dual Update System**: Supports both full App updates (APK/IPA) and incremental Resource updates (Hot updates).
+- **Cross-platform App Updates**: Supports Android APK install handoff, macOS DMG guidance, Windows installer launch, and iOS/iPadOS store redirects.
+- **Dual Update System**: Supports both full App updates and incremental Resource updates (Hot updates).
 - **Scriptable Patching**: Includes a built-in script interpreter (`ScriptRunner`) to execute complex file operations (unzip, move, delete, etc.) defined in update packages.
 - **Progress Tracking**: Provides detailed callbacks for update checking, downloading, and installation progress.
 - **UI Agnostic**: Pure Dart logic, allowing you to build your own update UI.
@@ -24,8 +25,14 @@ Add this package to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  rosemary_updater: ^0.0.2
+  rosemary_updater: ^0.1.0
 ```
+
+### 🌐 Full-stack Deployment
+
+This package is the Flutter client/plugin side. For a complete self-hosted deployment (backend management console + update distribution service), please set up the backend project here:
+
+- [Foodie05/rosemary](https://github.com/Foodie05/rosemary)
 
 ### 🛠 Usage
 
@@ -108,13 +115,19 @@ The `ScriptRunner` supports a variety of commands for resource manipulation duri
 ### 🔧 Platform Notes
 
 - Android
-  - Automatically downloads APK and invokes system installer.
+  - Downloads APK packages and invokes the system installer.
   - Ensure `android/app/src/main/AndroidManifest.xml` includes:
     ```xml
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     ```
-- iOS
-  - Supports resource updates. App updates generally require App Store flow.
+- macOS
+  - Downloads the configured installer package and opens it.
+  - The recommended Rosemary backend flow is distributing a DMG and guiding the user to drag the app into `Applications`.
+- Windows
+  - Downloads the configured installer and opens `exe` or `msi` packages with the system installer.
+- iOS / iPadOS
+  - Does not attempt sideload installation.
+  - Opens the configured App Store, TestFlight, or external review link so the user can complete the update manually.
 
 ### ▶️ Example
 
@@ -139,7 +152,7 @@ If you are targeting Android 10 (API level 29) or higher, you may also need to a
 
 ## iOS Configuration
 
-For iOS, this library currently supports resource updates. App updates typically require redirecting the user to the App Store.
+For iOS and iPadOS, configure the Rosemary backend to return an App Store or TestFlight URL. The package will open that link with `url_launcher`.
 
 <a name="chinese"></a>
 ## 中文
@@ -160,7 +173,7 @@ For iOS, this library currently supports resource updates. App updates typically
 
 ### iOS 配置
 
-iOS 端目前支持资源更新。应用更新通常需要跳转到 App Store，本库会自动处理 App Store 链接跳转（需自行实现跳转逻辑或使用 `url_launcher`）。
+iOS / iPadOS 不支持侧载更新，请在 Rosemary 后端配置 App Store、TestFlight 或其他审核通过的外部链接，本库会通过 `url_launcher` 直接跳转。
 
 ### 🚀 简介
 
@@ -169,7 +182,8 @@ Rosemary Updater 是一个强大的 Flutter 库，专为管理应用和资源更
 ### ✨ 特性
 
 - **Rosemary 后端兼容**: 与 Rosemary 无缝集成，用于版本管理和更新分发。
-- **双重更新系统**: 支持全量应用更新（APK）和增量资源更新（热更新）。
+- **跨平台应用更新**: 支持 Android APK 安装、macOS DMG 引导、Windows 安装器拉起，以及 iOS/iPadOS 商店跳转。
+- **双重更新系统**: 支持全量应用更新和增量资源更新（热更新）。
 - **脚本化补丁**: 内置脚本解释器 (`ScriptRunner`)，可执行更新包中定义的复杂文件操作（解压、移动、删除等）。
 - **进度追踪**: 提供详细的回调，用于监控更新检查、下载和安装进度。
 - **UI 无关**: 纯 Dart 逻辑，允许您构建自己的更新 UI。
@@ -180,8 +194,14 @@ Rosemary Updater 是一个强大的 Flutter 库，专为管理应用和资源更
 
 ```yaml
 dependencies:
-  rosemary_updater: ^0.0.2
+  rosemary_updater: ^0.1.0
 ```
+
+### 🌐 全套部署
+
+本仓库是 Flutter 插件/客户端侧。若需完整自部署（后端管理台 + 更新分发服务），请同时部署后端项目：
+
+- [Foodie05/rosemary](https://github.com/Foodie05/rosemary)
 
 ### 🛠 使用方法
 
@@ -269,8 +289,14 @@ if (updateInfo != null && (updateInfo.appUpgrade || updateInfo.resUpgrade)) {
     ```xml
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     ```
-- iOS
-  - 支持资源更新；应用更新一般需要跳转 App Store。
+- macOS
+  - 下载并打开安装包。
+  - 推荐在 Rosemary 后端提供 DMG，并在客户端提示用户将应用拖入 `Applications` 完成更新。
+- Windows
+  - 下载并拉起 `exe` 或 `msi` 安装器。
+- iOS / iPadOS
+  - 不执行侧载安装。
+  - 会直接跳转到配置好的 App Store、TestFlight 或外部审核链接。
 
 ### ▶️ 示例
 

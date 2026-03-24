@@ -14,6 +14,8 @@ class UpdateRequest {
   String betaPasswd;
   @JsonKey(name: "resVersion")
   int resVersion;
+  @JsonKey(name: "platform")
+  String platform;
 
   UpdateRequest({
     required this.appName,
@@ -21,9 +23,11 @@ class UpdateRequest {
     required this.appVersion,
     required this.betaPasswd,
     required this.resVersion,
+    required this.platform,
   });
 
-  factory UpdateRequest.fromJson(Map<String, dynamic> json) => _$UpdateRequestFromJson(json);
+  factory UpdateRequest.fromJson(Map<String, dynamic> json) =>
+      _$UpdateRequestFromJson(json);
 
   Map<String, dynamic> toJson() => _$UpdateRequestToJson(this);
 }

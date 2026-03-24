@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'package:open_file_plus/open_file_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'model/update_request.dart';
 import 'model/update_receive.dart';
 import 'script_runner.dart';
@@ -46,7 +48,7 @@ class UpdateStatus {
     this.progress = 0,
     this.message = '',
   });
-  
+
   UpdateStatus copyWith({
     bool? checking,
     bool? downloading,
@@ -71,7 +73,7 @@ class UpdateStatus {
 class RosemaryUpdater {
   final UpdaterConfig config;
   final Dio _dio = Dio();
-  
+
   RosemaryUpdater(this.config);
 
   Future<UpdateReceive?> checkUpdate() async {
@@ -82,14 +84,15 @@ class RosemaryUpdater {
         appVersion: config.appVersion,
         betaPasswd: config.betaPasswd,
         resVersion: config.resVersion,
+        platform: _currentPlatform(),
       );
 
       // Assuming API endpoint structure based on zion
-      // Need to verify exact endpoint path. 
+      // Need to verify exact endpoint path.
       // In zion/lib/controllers/update_controller.dart, it calls UpgradeData().checkUpdate
-      // In zion/lib/upgrade/upgrade_data.dart: 
+      // In zion/lib/upgrade/upgrade_data.dart:
       // final response = await http.post(Uri.parse('${GlobalValue.apiBaseUrl}/api/update_check'), ...
-      
+
       final response = await _dio.post(
         '${config.apiBaseUrl}/update',
         data: requestData.toJson(),
@@ -114,7 +117,7 @@ class RosemaryUpdater {
     if (updateInfo.resUpgrade) {
       await _runResUpdate(updateInfo, onStatusChanged);
     }
-    
+
     if (updateInfo.appUpgrade) {
       await _runAppUpdate(updateInfo, onStatusChanged);
     }
@@ -133,6 +136,17 @@ class RosemaryUpdater {
     }
 
     try {
+      final installKind = updateInfo.appUpgradeInstallKind.toLowerCase();
+      if (installKind == 'appstore' || installKind == 'testflight') {
+        onStatusChanged(UpdateStatus(
+          installing: true,
+          message: 'Opening update channel...',
+          progress: 100,
+        ));
+        await _launchExternalUpdateUrl(updateInfo, onStatusChanged);
+        return;
+      }
+
       onStatusChanged(UpdateStatus(
         downloading: true,
         message: 'Downloading app update...',
@@ -154,7 +168,7 @@ class RosemaryUpdater {
         }
       }
 
-      final fileName = 'update_${DateTime.now().millisecondsSinceEpoch}.apk';
+      final fileName = _buildInstallerFileName(updateInfo);
       final filePath = path.join(downloadPath, fileName);
 
       // Download APK
@@ -179,21 +193,11 @@ class RosemaryUpdater {
         progress: 100,
       ));
 
-      // Install APK
-      final result = await OpenFile.open(filePath);
-      
-      if (result.type == ResultType.done) {
-        onStatusChanged(UpdateStatus(
-          success: true,
-          message: 'App update installation started',
-        ));
-      } else {
-         onStatusChanged(UpdateStatus(
-          error: 'Failed to open APK: ${result.message}',
-          success: false,
-        ));
-      }
-
+      await _launchInstaller(
+        filePath: filePath,
+        updateInfo: updateInfo,
+        onStatusChanged: onStatusChanged,
+      );
     } catch (e) {
       onStatusChanged(UpdateStatus(
         error: 'App update failed: $e',
@@ -206,7 +210,8 @@ class RosemaryUpdater {
     UpdateReceive updateInfo,
     void Function(UpdateStatus status) onStatusChanged,
   ) async {
-    onStatusChanged(UpdateStatus(downloading: true, message: 'Downloading resources...'));
+    onStatusChanged(
+        UpdateStatus(downloading: true, message: 'Downloading resources...'));
 
     try {
       String downloadPath;
@@ -216,9 +221,9 @@ class RosemaryUpdater {
         final docDir = await getApplicationDocumentsDirectory();
         downloadPath = docDir.path;
       }
-      
+
       final zipPath = path.join(downloadPath, 'update_temp.zip');
-      
+
       // Download
       await _dio.download(
         updateInfo.resUpgradeUrl,
@@ -226,29 +231,32 @@ class RosemaryUpdater {
         onReceiveProgress: (received, total) {
           if (total != -1) {
             int progress = (received / total * 100).toInt();
-            onStatusChanged(UpdateStatus(downloading: true, progress: progress, message: 'Downloading resources...'));
+            onStatusChanged(UpdateStatus(
+                downloading: true,
+                progress: progress,
+                message: 'Downloading resources...'));
           }
         },
       );
 
-      onStatusChanged(UpdateStatus(installing: true, message: 'Installing resources...'));
+      onStatusChanged(
+          UpdateStatus(installing: true, message: 'Installing resources...'));
 
       // Unzip
       final scriptRunner = ScriptRunner(
-        appVersion: config.appVersion,
-        onMessage: (msg) {
-           // Relay script messages?
-           debugPrintLog('Script says: $msg');
-        }
-      );
-      
-      // We need to unzip to a temp dir first to find the script? 
-      // Or does the script runner handle unzipping? 
-      // In Zion UpgradeData: 
+          appVersion: config.appVersion,
+          onMessage: (msg) {
+            // Relay script messages?
+            debugPrintLog('Script says: $msg');
+          });
+
+      // We need to unzip to a temp dir first to find the script?
+      // Or does the script runner handle unzipping?
+      // In Zion UpgradeData:
       // 1. Download to update.zip
       // 2. Unzip to 'update_temp'
       // 3. Run 'update_temp/update.rp'
-      
+
       final updateTempDir = path.join(downloadPath, 'update_temp');
       final updateTempDirObj = Directory(updateTempDir);
       if (await updateTempDirObj.exists()) {
@@ -256,20 +264,19 @@ class RosemaryUpdater {
       }
       await updateTempDirObj.create(recursive: true);
 
-      // Unzip manually or use script? 
+      // Unzip manually or use script?
       // Zion uses global_functions.dart unzipFile.
       // We can use our ScriptRunner unzip if we want, or just archive directly.
       // Let's use ScriptRunner's unzip logic but called directly or just standard unzip.
-      // Actually ScriptRunner has 'unzip' command. 
+      // Actually ScriptRunner has 'unzip' command.
       // But we need to bootstrap.
-      
-      bool unzipResult = scriptRunner.unzip(
-        [zipPath, updateTempDir], 
-        progressCallback: (p) {
-           onStatusChanged(UpdateStatus(installing: true, progress: p, message: 'Unzipping resources...'));
-        }
-      );
-      
+
+      bool unzipResult =
+          scriptRunner.unzip([zipPath, updateTempDir], progressCallback: (p) {
+        onStatusChanged(UpdateStatus(
+            installing: true, progress: p, message: 'Unzipping resources...'));
+      });
+
       if (!unzipResult) {
         throw Exception('Failed to unzip update package');
       }
@@ -277,30 +284,152 @@ class RosemaryUpdater {
       // Run script
       final scriptPath = path.join(updateTempDir, 'update.rp');
       if (!await File(scriptPath).exists()) {
-         throw Exception('Update script not found');
+        throw Exception('Update script not found');
       }
 
-      bool scriptResult = await scriptRunner.fileScript(
-        scriptPath,
-        initSetDir: downloadPath, // or where? Zion passes initSetDir. 
-        // In Zion UpgradeData: ResPatchFunc().shellScript(..., initSetDir: appDocDir.path)
-        // Wait, if initSetDir is appDocDir, then relative paths in script are relative to appDocDir.
-        progressCallback: (total, sub) {
-          onStatusChanged(UpdateStatus(installing: true, progress: total, message: 'Applying patch...'));
-        }
-      );
+      bool scriptResult = await scriptRunner.fileScript(scriptPath,
+          initSetDir: downloadPath, // or where? Zion passes initSetDir.
+          // In Zion UpgradeData: ResPatchFunc().shellScript(..., initSetDir: appDocDir.path)
+          // Wait, if initSetDir is appDocDir, then relative paths in script are relative to appDocDir.
+          progressCallback: (total, sub) {
+        onStatusChanged(UpdateStatus(
+            installing: true, progress: total, message: 'Applying patch...'));
+      });
 
       if (scriptResult) {
         // Clean up
         await File(zipPath).delete();
         await updateTempDirObj.delete(recursive: true);
-        onStatusChanged(UpdateStatus(success: true, message: 'Update completed successfully'));
+        onStatusChanged(UpdateStatus(
+            success: true, message: 'Update completed successfully'));
       } else {
         throw Exception('Update script failed');
       }
-
     } catch (e) {
-      onStatusChanged(UpdateStatus(error: e.toString(), message: 'Update failed'));
+      onStatusChanged(
+          UpdateStatus(error: e.toString(), message: 'Update failed'));
     }
+  }
+
+  Future<void> _launchInstaller({
+    required String filePath,
+    required UpdateReceive updateInfo,
+    required void Function(UpdateStatus status) onStatusChanged,
+  }) async {
+    final installKind = updateInfo.appUpgradeInstallKind.toLowerCase();
+
+    if (installKind == 'appstore' || installKind == 'testflight') {
+      await _launchExternalUpdateUrl(updateInfo, onStatusChanged);
+      return;
+    }
+
+    final result = await OpenFile.open(filePath);
+
+    if (result.type != ResultType.done) {
+      onStatusChanged(UpdateStatus(
+        error: 'Failed to open installer: ${result.message}',
+        success: false,
+      ));
+      return;
+    }
+
+    onStatusChanged(UpdateStatus(
+      success: true,
+      message: _installSuccessMessage(updateInfo),
+    ));
+  }
+
+  Future<void> launchStoreUpdate({
+    required UpdateReceive updateInfo,
+    required void Function(UpdateStatus status) onStatusChanged,
+  }) async {
+    await _launchExternalUpdateUrl(updateInfo, onStatusChanged);
+  }
+
+  Future<void> _launchExternalUpdateUrl(
+    UpdateReceive updateInfo,
+    void Function(UpdateStatus status) onStatusChanged,
+  ) async {
+    if (updateInfo.appUpgradeUrl.isEmpty) {
+      onStatusChanged(UpdateStatus(
+        error: 'Update URL is empty',
+        success: false,
+      ));
+      return;
+    }
+
+    final uri = Uri.tryParse(updateInfo.appUpgradeUrl);
+    if (uri == null) {
+      onStatusChanged(UpdateStatus(
+        error: 'Invalid update URL',
+        success: false,
+      ));
+      return;
+    }
+
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!launched) {
+      onStatusChanged(UpdateStatus(
+        error: 'Failed to open update URL',
+        success: false,
+      ));
+      return;
+    }
+
+    onStatusChanged(UpdateStatus(
+      success: true,
+      message: _installSuccessMessage(updateInfo),
+    ));
+  }
+
+  String _buildInstallerFileName(UpdateReceive updateInfo) {
+    final extension = switch (updateInfo.appUpgradeInstallKind.toLowerCase()) {
+      'dmg' => 'dmg',
+      'exe' => 'exe',
+      'msi' => 'msi',
+      _ => 'apk',
+    };
+    return 'update_${DateTime.now().millisecondsSinceEpoch}.$extension';
+  }
+
+  String _installSuccessMessage(UpdateReceive updateInfo) {
+    switch (updateInfo.appUpgradeInstallKind.toLowerCase()) {
+      case 'dmg':
+        return 'DMG opened. Mount it and drag the app into Applications to finish the update.';
+      case 'exe':
+      case 'msi':
+        return 'Installer opened. Follow the setup wizard to complete the update.';
+      case 'appstore':
+        final label = updateInfo.appUpgradeStoreLabel.isEmpty
+            ? 'the store'
+            : updateInfo.appUpgradeStoreLabel;
+        return 'Redirected to $label for update installation.';
+      case 'testflight':
+        return 'Redirected to TestFlight to continue the update.';
+      default:
+        return 'App update installation started.';
+    }
+  }
+
+  String _currentPlatform() {
+    if (kIsWeb) {
+      return 'web';
+    }
+    if (Platform.isAndroid) {
+      return 'android';
+    }
+    if (Platform.isMacOS) {
+      return 'macos';
+    }
+    if (Platform.isWindows) {
+      return 'windows';
+    }
+    if (Platform.isIOS) {
+      return 'ios';
+    }
+    if (Platform.isLinux) {
+      return 'linux';
+    }
+    return 'unknown';
   }
 }
