@@ -92,21 +92,30 @@ class RosemaryUpdater {
       // In zion/lib/controllers/update_controller.dart, it calls UpgradeData().checkUpdate
       // In zion/lib/upgrade/upgrade_data.dart:
       // final response = await http.post(Uri.parse('${GlobalValue.apiBaseUrl}/api/update_check'), ...
+      
+      final url = '${config.apiBaseUrl}/update';
+      final data = requestData.toJson();
+      
+      debugPrintLog('Checking update from: $url');
+      debugPrintLog('Request Body: $data');
 
       final response = await _dio.post(
-        '${config.apiBaseUrl}/update',
-        data: requestData.toJson(),
+        url,
+        data: data,
       );
+
+      debugPrintLog('Response Status: ${response.statusCode}');
+      debugPrintLog('Response Body: ${response.data}');
 
       if (response.statusCode == 200) {
         return UpdateReceive.fromJson(response.data);
       } else {
         debugPrintLog('Check update failed: ${response.statusCode}');
-        return null;
+        throw Exception('Check update failed: ${response.statusCode}');
       }
     } catch (e) {
       debugPrintLog('Check update error: $e');
-      return null;
+      rethrow;
     }
   }
 

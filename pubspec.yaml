@@ -16,7 +16,8 @@ dependencies:
   flutter:
     sdk: flutter
   json_annotation: ^4.11.0
-  open_file_plus: ^3.4.1+1
+  open_file_plus:
+    path: ../open_file_plus
   path: ^1.9.1
   path_provider: ^2.1.5
   permission_handler: ^12.0.1
