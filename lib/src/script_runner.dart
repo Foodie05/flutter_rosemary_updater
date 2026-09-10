@@ -76,6 +76,9 @@ class ScriptRunner {
       bool commandResult = await commandRealize(commandWithArg, (int progress) {
         progressCallback((i / command.length * 100).toInt(), progress);
       });
+      if (commandWithArg.isNotEmpty && commandWithArg[0] != '//') {
+        debugPrintLog('[rp:$i] ${command[i].trim()} => ${commandResult ? "OK" : "FAIL"}');
+      }
       if (commandResult == false) {
         if (endSignal == true) {
           debugPrintLog('Script ended with no error.');
@@ -356,11 +359,15 @@ class ScriptRunner {
     if (!r.result) return false;
     String p = setDir == '' ? r.value : path.join(setDir, r.value);
     File f = File(p);
-    if (await f.exists()) {
+    bool exists = await f.exists();
+    debugPrintLog('[rm] $p  exists=$exists');
+    if (exists) {
       try {
         await f.delete();
+        debugPrintLog('[rm] $p  => deleted');
         return true;
       } catch (e) {
+        debugPrintLog('[rm] $p  => FAIL: $e');
         return false;
       }
     }
@@ -435,10 +442,15 @@ class ScriptRunner {
     if (!r1.result || !r2.result) return false;
     String p1 = setDir == '' ? r1.value : path.join(setDir, r1.value);
     String p2 = setDir == '' ? r2.value : path.join(setDir, r2.value);
+    bool srcExists = await File(p1).exists();
+    bool dstDirExists = await Directory(path.dirname(p2)).exists();
+    debugPrintLog('[cp] $p1 => $p2  srcExists=$srcExists  dstDirExists=$dstDirExists');
     try {
       await File(p1).copy(p2);
+      debugPrintLog('[cp] OK');
       return true;
     } catch (e) {
+      debugPrintLog('[cp] FAIL: $e');
       return false;
     }
   }
@@ -486,10 +498,13 @@ class ScriptRunner {
     GetArgResult r = get_arg(args[0]);
     if (!r.result) return false;
     String p = setDir == '' ? r.value : path.join(setDir, r.value);
+    debugPrintLog('[mkdir] $p');
     try {
       await Directory(p).create(recursive: true);
+      debugPrintLog('[mkdir] OK');
       return true;
     } catch (e) {
+      debugPrintLog('[mkdir] FAIL: $e');
       return false;
     }
   }
@@ -500,11 +515,15 @@ class ScriptRunner {
     if (!r.result) return false;
     String p = setDir == '' ? r.value : path.join(setDir, r.value);
     File f = File(p);
+    debugPrintLog('[touch] $p  args=${args.length}');
     try {
       if (args.length == 1) {
         if (!await f.exists()) await f.create();
       } else {
-        if (await f.exists()) return false;
+        if (await f.exists()) {
+          debugPrintLog('[touch] FAIL: file already exists');
+          return false;
+        }
         await f.create();
         var sink = f.openWrite();
         for (int i = 1; i < args.length; i++) {
@@ -515,8 +534,10 @@ class ScriptRunner {
         await sink.flush();
         await sink.close();
       }
+      debugPrintLog('[touch] OK');
       return true;
     } catch (e) {
+      debugPrintLog('[touch] FAIL: $e');
       return false;
     }
   }

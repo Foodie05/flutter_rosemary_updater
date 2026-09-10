@@ -1,7 +1,21 @@
-import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:crypto/crypto.dart';
+
+enum UpdateLogLevel {
+  info,
+  warning,
+  error,
+}
+
+typedef UpdateLogCallback = Future<void> Function(
+  UpdateLogLevel level,
+  String source,
+  String message, {
+  Map<String, dynamic>? metadata,
+  Object? error,
+  StackTrace? stackTrace,
+});
 
 enum UpdaterPlatformType {
   android,
@@ -14,10 +28,7 @@ enum UpdaterPlatformType {
 }
 
 void debugPrintLog(String str) {
-  // Can be overridden or hooked
-  if (kDebugMode) {
-    debugPrint(str);
-  }
+  stdout.writeln(str);
 }
 
 String generateMd5(String input) {

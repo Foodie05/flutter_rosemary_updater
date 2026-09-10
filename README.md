@@ -54,6 +54,28 @@ final config = UpdaterConfig(
 );
 ```
 
+#### 1.1 Server-Signed Beta Update Mode (Recommended)
+
+When you do not want to expose fixed beta passwords in clients, switch to `serverSigned` mode.
+In this mode, the app posts update payload to your center broker endpoint. The broker validates user beta eligibility and returns a temporary signed Rosemary URL.
+
+```dart
+final config = UpdaterConfig(
+  apiBaseUrl: 'https://centerzion.cruty.cn',
+  appName: 'com.cruos.zion',
+  appPasswd: '',
+  betaPasswd: betaTokenFromServer,
+  appVersion: 100,
+  resVersion: 200,
+  betaValidationMode: BetaValidationMode.serverSigned,
+  signedUpdateConfig: const SignedUpdateConfig(
+    brokerEndpoint: 'https://centerzion.cruty.cn/api/beta/signed-update-link',
+    ttlSeconds: 300,
+    maxUses: 1,
+  ),
+);
+```
+
 #### 2. Check for Updates
 
 Use `RosemaryUpdater` to check if a new version is available.
@@ -128,6 +150,14 @@ The `ScriptRunner` supports a variety of commands for resource manipulation duri
 - iOS / iPadOS
   - Does not attempt sideload installation.
   - Opens the configured App Store, TestFlight, or external review link so the user can complete the update manually.
+
+### 🔐 Signed Link Integration Checklist
+
+1. In Rosemary Release Manager (per app), enable **Signed Update Link** and set TTL / Max Uses.
+2. Configure center server with:
+   - Rosemary signed-link endpoint: `/update/signed-link`
+   - Shared HMAC secret (`x-rosemary-sign`)
+3. Keep fixed beta password mode as backward compatibility, but prefer `serverSigned` for new clients.
 
 ### ▶️ Example
 
